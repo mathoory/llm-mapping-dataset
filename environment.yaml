@@ -1,0 +1,17 @@
+name: nlp-final
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - ipython
+  - jupyter
+  - jupyterlab
+  - matplotlib
+  - numpy
+  - pandas
+  - pip
+  - pip:
+      - ipdb
+      - plotly
+      - google-genai
+      - wordfreq 

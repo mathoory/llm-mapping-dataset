@@ -1,4 +1,4 @@
-from utils.mapping import DNAMap, LowercaseMap
+from evaluation import DNAMap, LowercaseMap
 
 def test_dna_to_protein():
     t = DNAMap()
