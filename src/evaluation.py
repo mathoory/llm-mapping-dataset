@@ -1,5 +1,6 @@
-from utils.dna_map import codon_table
+from utils.rna_map import codon_table
 from utils.str_compare import StringEvaluator
+
 
 class Mapping:
     MAP = {}
@@ -11,13 +12,13 @@ class Mapping:
         evaluator = StringEvaluator(context_radius=5)
         return evaluator.evaluate_strings(expected, output)
 
-class DNAMap(Mapping):
+class RNAMap(Mapping):
     MAP = codon_table
     
     def translate(self, input):
-        """Convert a DNA sequence to a protein sequence."""
+        """Convert a RNA sequence to a protein sequence."""
         if len(input) % 3 != 0:
-            raise ValueError("DNA sequence length must be a multiple of 3")
+            raise ValueError("RNA sequence length must be a multiple of 3")
 
         protein_seq = []
         for i in range(0, len(input) - 2, 3):
@@ -39,3 +40,11 @@ class LowercaseMap(Mapping):
     def translate(self, input):
         """Convert a string to lowercase"""
         return input.lower()
+    
+
+topic_to_mapping = {
+    "uppercase string": UppercaseMap(),
+    "uppercase words": UppercaseMap(),
+    "uppercase natural text": UppercaseMap(),
+    "RNA": RNAMap()
+}

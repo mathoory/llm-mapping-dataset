@@ -1,5 +1,6 @@
 src/key.secret
 src/data
+*.pdf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

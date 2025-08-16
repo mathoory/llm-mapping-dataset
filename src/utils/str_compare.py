@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
+
 @dataclass
 class Mistake:
     kind: str                  # "sub", "ins", or "del"
@@ -12,11 +13,21 @@ class Mistake:
     output_context: str
 
     def __repr__(self):
+        kind_map = {"sub": "Substitution", "ins": "Insertion", "del": "Deletion"}
+
+        def show_char(ch):
+            return repr(ch) if ch is not None else "∅"  # gap
+
+        # One compact header line + two context lines
+        header = (
+            f"- {kind_map[self.kind]}: "
+            f"expected[{self.idx_expected}]={show_char(self.expected_char)} | "
+            f"output[{self.idx_output}]={show_char(self.output_char)}"
+        )
         return (
-            f"[{self.kind.upper()}] "
-            f"exp_idx={self.idx_expected}, out_idx={self.idx_output} | "
-            f"exp='{self.expected_char}' out='{self.output_char}' | "
-            f"exp_ctx='{self.expected_context}' out_ctx='{self.output_context}'"
+            f"{header}\n"
+            f"    expected: {self.expected_context}\n"
+            f"    output  : {self.output_context}"
         )
 
 @dataclass
@@ -24,19 +35,18 @@ class EvaluationResult:
     num_mistakes: int
     pct_mistakes: float
     mistakes: List[Mistake]
+    alignment: Optional[str] = None  # new
 
     def __repr__(self):
-        lines = [
-            f"EvaluationResult:",
-            f"  Number of mistakes: {self.num_mistakes}",
-            f"  Percentage of mistakes: {self.pct_mistakes:.2f}%",
-            f"  Mistakes:"
-        ]
+        lines = []
         if not self.mistakes:
-            lines.append("  None ✅")
+            lines.append("  ✅ No mistakes!")
         else:
+            lines = [f"Mistakes: {self.num_mistakes} ({self.pct_mistakes:.2f}%)"]
             for m in self.mistakes:
-                lines.append(f"    {m}")
+                lines.append(f"  {m}")
+        if self.alignment:
+            lines.append("\nAlignment:\n" + self.alignment)
         return "\n".join(lines)
 
     def __bool__(self):
@@ -117,6 +127,78 @@ class StringEvaluator:
         end = min(len(s), idx + r + 1)
         return s[start:end]
 
+    def _pretty_alignment(self, expected: str, output: str, ops, width: int = 80, only_error_chunks: bool = True) -> str:
+        """Return alignment view; optionally only chunks that contain mistakes."""
+        exp_line, out_line, mark_line = [], [], []
+
+        # Build aligned strings + caret marks
+        for op, i, j in ops:
+            if op == "eq":
+                exp_line.append(expected[i]); out_line.append(output[j]); mark_line.append(" ")
+            elif op == "sub":
+                exp_line.append(expected[i]); out_line.append(output[j]); mark_line.append("^")
+            elif op == "del":
+                exp_line.append(expected[i]); out_line.append("-");         mark_line.append("^")
+            elif op == "ins":
+                exp_line.append("-");         out_line.append(output[j]);  mark_line.append("^")
+
+        exp_str = "".join(exp_line)
+        out_str = "".join(out_line)
+        marks   = "".join(mark_line)
+
+        # Ruler that prints 0, ....10, ....20 with absolute positions
+        def _ruler(start: int, n: int) -> str:
+            s = []
+            for i in range(start, start + n):
+                if i % 10 == 0:
+                    s.append(str(i))   # "0","10","20", ...
+                else:
+                    s.append(".")
+            return "".join(s)
+
+        chunks = []
+        for k in range(0, len(exp_str), width):
+            seg_len = min(width, len(exp_str) - k)
+            seg_marks = marks[k:k+seg_len]
+            if only_error_chunks and "^" not in seg_marks:
+                continue  # skip clean segments
+
+            prefix = f"EXP {k:4d}: "
+            pad = " " * len(prefix)
+
+            chunks.append(prefix + exp_str[k:k+seg_len])
+            chunks.append(f"OUT {k:4d}: " + out_str[k:k+seg_len])
+            chunks.append(pad + seg_marks)
+            chunks.append(pad + _ruler(k, seg_len))
+
+        return "\n".join(chunks)
+
+
+    def _mark_context(self, s: str, idx: Optional[int], gap: bool = False) -> str:
+        """Return a ±context_radius window around idx in s with [X] marking the focal spot.
+        If gap=True, we mark a gap (∅) at position idx (between characters) and include surrounding chars.
+        """
+        r = self.context_radius
+        if idx is None:
+            return ""  # shouldn't happen with the changes below
+
+        if not gap:
+            # Mark an existing character at idx
+            start = max(0, idx - r)
+            end = min(len(s), idx + r + 1)
+            left = s[start:idx]
+            focus = s[idx] if 0 <= idx < len(s) else ""
+            right = s[idx+1:end] if 0 <= idx < len(s) else ""
+            return f"{left}[{focus}]{right}"
+        else:
+            # Mark a gap at position idx (between characters)
+            # left is up to idx, right starts at idx
+            start = max(0, idx - r)
+            end = min(len(s), idx + r)  # no +1 because there's no char at idx
+            left = s[start:idx] if 0 <= idx <= len(s) else ""
+            right = s[idx:end] if 0 <= idx <= len(s) else ""
+            return f"{left}[∅]{right}"
+
     def evaluate_strings(self, expected: str, output: str) -> EvaluationResult:
         ops = self._align(expected, output)
 
@@ -131,31 +213,50 @@ class StringEvaluator:
                     idx_output=j,
                     expected_char=expected[i] if 0 <= i < len(expected) else None,
                     output_char=output[j] if 0 <= j < len(output) else None,
-                    expected_context=self._context(expected, i),
-                    output_context=self._context(output, j),
+                    expected_context=self._mark_context(expected, i, gap=False),
+                    output_context=self._mark_context(output, j, gap=False),
                 ))
             elif op == "del":
+                # gap in output at position j
                 mistakes.append(Mistake(
                     kind="del",
                     idx_expected=i,
-                    idx_output=None,
+                    idx_output=j,  # << record where the gap is
                     expected_char=expected[i] if 0 <= i < len(expected) else None,
-                    output_char=None,
-                    expected_context=self._context(expected, i),
-                    output_context=self._context(output, None),
+                    output_char=None,  # gap
+                    expected_context=self._mark_context(expected, i, gap=False),
+                    output_context=self._mark_context(output, j, gap=True),  # << show [∅]
                 ))
             elif op == "ins":
+                # gap in expected at position i
                 mistakes.append(Mistake(
                     kind="ins",
-                    idx_expected=None,
+                    idx_expected=i,  # << record where the gap is
                     idx_output=j,
-                    expected_char=None,
+                    expected_char=None,  # gap
                     output_char=output[j] if 0 <= j < len(output) else None,
-                    expected_context=self._context(expected, None),
-                    output_context=self._context(output, j),
+                    expected_context=self._mark_context(expected, i, gap=True),  # << show [∅]
+                    output_context=self._mark_context(output, j, gap=False),
                 ))
 
         num = len(mistakes)
-        denom = max(len(expected), len(output), 1)  # avoid div-by-zero
+        denom = max(len(expected), len(output), 1)
         pct = 100.0 * num / denom
-        return EvaluationResult(num_mistakes=num, pct_mistakes=pct, mistakes=mistakes)
+
+        # Only compute alignment if there are mistakes,
+        # and only include chunks that contain mistakes.
+        alignment = None
+        if num > 0:
+            alignment = self._pretty_alignment(expected, output, ops, width=80, only_error_chunks=True)
+
+        return EvaluationResult(
+            num_mistakes=num,
+            pct_mistakes=pct,
+            mistakes=mistakes,
+            alignment=alignment
+        )
+
+# Test
+if __name__ == "__main__":
+    evaluator = StringEvaluator()
+    print(evaluator.evaluate_strings("hello world", "Hello orld"))

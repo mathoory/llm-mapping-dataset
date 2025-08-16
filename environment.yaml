@@ -15,3 +15,4 @@ dependencies:
       - plotly
       - google-genai
       - wordfreq 
+      - nltk

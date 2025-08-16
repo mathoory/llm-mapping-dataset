@@ -1,7 +1,7 @@
-from evaluation import DNAMap, LowercaseMap
+from evaluation import RNAMap, LowercaseMap
 
 def test_dna_to_protein():
-    t = DNAMap()
+    t = RNAMap()
 
 
     """Test the dna_to_protein function."""
