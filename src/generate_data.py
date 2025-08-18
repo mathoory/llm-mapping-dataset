@@ -7,7 +7,13 @@ from wordfreq import top_n_list
 import re
 import nltk
 from nltk.corpus import gutenberg, brown, reuters, webtext
-from evaluation import UppercaseMap, RNAMap
+from evaluation import Mapping, UppercaseMap, RNAMap
+
+with open("./data/prompt.txt", 'r', encoding='utf-8') as f:
+    PROMPT_TEMPLATE = f.read()
+
+def gen_prompt(input, mapping: Mapping):
+    return PROMPT_TEMPLATE.format(conversion=str(mapping), input=input)
 
 def generate_random_string(length):
     """Generate a random lowercase string of given length."""
@@ -24,7 +30,7 @@ def generate_dataset_lower_random(n, lengths=(5, 20, 50)):
             lowercase_str = generate_random_string(length)
             uppercase_str = t.translate(lowercase_str)
             dataset.append({
-                "prompt": f"Convert the following string to uppercase, give the answer between curly brackets:\n{lowercase_str}",
+                "prompt": gen_prompt(lowercase_str, t),
                 "metadata": {
                     "difficulty": difficulties[length],
                     "topic": "uppercase string"
@@ -49,7 +55,7 @@ def generate_dataset_lower_words(n, lengths=(10, 200, 1000)):
             lowercase_str = " ".join(words)
             uppercase_str = t.translate(lowercase_str)
             dataset.append({
-                "prompt": f"Convert the following string to uppercase, wrap the answer with curly brackets:\n{lowercase_str}",
+                "prompt": gen_prompt(lowercase_str, t),
                 "metadata": {
                     "difficulty": difficulties[length],
                     "topic": "uppercase words"
@@ -153,10 +159,7 @@ def generate_dataset_lower_text(
             uppercase_str = t.translate(lowercase_str)
 
             dataset.append({
-                "prompt": (
-                    "Convert the following text to uppercase, wrap the answer with curly brackets:\n"
-                    f"{lowercase_str}"
-                ),
+                "prompt": gen_prompt(lowercase_str, t),
                 "metadata": {
                     "difficulty": difficulties[length],
                     "topic": "uppercase natural text",
@@ -183,7 +186,7 @@ def generate_dataset_rna_random(n, lengths=(5, 20, 50)):
             RNA_sequence = ''.join(random.choices('ACGU', k=length*3))
             protein_sequence = t.translate(RNA_sequence)
             dataset.append({
-                "prompt": f"Convert the following RNA sequence to a protein sequence, wrap the answer with curly brackets:\n{RNA_sequence}",
+                "prompt": gen_prompt(RNA_sequence, t),
                 "metadata": {
                     "difficulty": difficulties[length],
                     "topic": "RNA"
@@ -202,6 +205,6 @@ def save_to_jsonl(data, filename):
 
 # Generate and save dataset
 if __name__ == "__main__":
-    dataset = generate_dataset_lower_text(3)
+    dataset = generate_dataset_lower_random(3)
     output_path = Path("./data/examples.jsonl")
     save_to_jsonl(dataset, output_path)

@@ -42,9 +42,14 @@ class EvaluationResult:
         if not self.mistakes:
             lines.append("  ✅ No mistakes!")
         else:
-            lines = [f"Mistakes: {self.num_mistakes} ({self.pct_mistakes:.2f}%)"]
+            # Count mistake types and print in one line
+            type_counts = {"sub": 0, "ins": 0, "del": 0}
             for m in self.mistakes:
-                lines.append(f"  {m}")
+                type_counts[m.kind] += 1
+            lines.append(
+                f"Mistakes: {self.num_mistakes} ({self.pct_mistakes:.2f}%) "
+                f"[sub: {type_counts['sub']}, ins: {type_counts['ins']}, del: {type_counts['del']}]"
+            )
         if self.alignment:
             lines.append("\nAlignment:\n" + self.alignment)
         return "\n".join(lines)

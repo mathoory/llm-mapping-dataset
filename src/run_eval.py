@@ -6,21 +6,13 @@ from utils.llm import LLM
 import re
 from datetime import datetime
 
-def run_eval():
-    llm = LLM()
-
+def run_eval(llm):
     with open("./data/examples.jsonl", 'r', encoding='utf-8') as f:
         for line in f:
             example = json.loads(line)
 
-            prompt = example["prompt"]
-            response = llm.query(prompt)
+            extracted_output, confidence_score = llm.query(example["prompt"], parse=True)
             
-            # Extract output from single curly brackets in the response
-            match = re.search(r"\{([^{}]+)\}", response)
-            extracted_output = match.group(1).strip() if match else ""
-
-            # Get mapping
             topic = example["metadata"]["topic"]
             mapping = topic_to_mapping[topic]
 
@@ -28,6 +20,9 @@ def run_eval():
             res = mapping.evaluate(example["input"], extracted_output)
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{timestamp}] {res}")
+            print(f"[{timestamp}] [{confidence_score}] {res}")
 
-run_eval()
+
+if __name__ == "__main__":
+    llm = LLM()
+    run_eval(llm)

@@ -3,8 +3,7 @@ from utils.str_compare import StringEvaluator
 
 
 class Mapping:
-    MAP = {}
-
+    """Base class for mapping input to output."""
     def translate(self, input):
         raise NotImplementedError("Subclasses should implement this method")
     def evaluate(self, input: str, output: str):
@@ -13,8 +12,6 @@ class Mapping:
         return evaluator.evaluate_strings(expected, output)
 
 class RNAMap(Mapping):
-    MAP = codon_table
-    
     def translate(self, input):
         """Convert a RNA sequence to a protein sequence."""
         if len(input) % 3 != 0:
@@ -29,18 +26,23 @@ class RNAMap(Mapping):
                 raise ValueError(f"Invalid codon: {codon}")
         
         return ''.join(protein_seq)
-        
+    def __str__(self):
+        return "RNA sequence to protein sequence"
+
 class UppercaseMap(Mapping):
     def translate(self, input):
         """Convert a string to uppercase"""
         return input.upper()
-    
+    def __str__(self):
+        return "lowercase string to uppercase string"
 
 class LowercaseMap(Mapping):
     def translate(self, input):
         """Convert a string to lowercase"""
         return input.lower()
-    
+    def __str__(self):
+        return "uppercase string to lowercase string"
+
 
 topic_to_mapping = {
     "uppercase string": UppercaseMap(),
