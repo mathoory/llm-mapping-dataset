@@ -1,19 +1,19 @@
 from evaluation import RNAMap, LowercaseMap
 
-def test_dna_to_protein():
+def test_rna_to_protein():
     t = RNAMap()
 
 
-    """Test the dna_to_protein function."""
-    # Test valid DNA sequence
+    """Test the rna_to_protein function."""
+    # Test valid RNA sequence
     assert t.translate("AUGGCCUUU") == "MAF"
-    
-    # Test invalid DNA sequence length
+
+    # Test invalid RNA sequence length
     try:
         t.translate("AUGGCCU")
     except ValueError as e:
-        assert str(e) == "DNA sequence length must be a multiple of 3"
-    
+        assert str(e) == "RNA sequence length must be a multiple of 3"
+
     # Test invalid codon
     try:
         t.translate("AUGGCCXYZ")
@@ -27,7 +27,7 @@ def test_lowercase():
 
 
 if __name__ == "__main__":
-    test_dna_to_protein()
+    test_rna_to_protein()
     test_lowercase()
 
     print("All tests passed!")
