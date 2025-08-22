@@ -58,10 +58,14 @@ Or use the unified CLI:
 python run_subtask.py --model pro --size 100 --tasks lowercase rna --eval
 ```
 
+
 ### Notes
 - 🔑 You must provide a valid API key for Google GenAI in `src/key.secret`.
 - 📄 Generated datasets are saved in JSONL format in the specified output path.
 - 📝 Evaluation prints results with timestamps and confidence scores.
+- ⚡ **Model-specific behavior:**
+  - For `flash` (Gemini 2.5 Flash), thinking is disabled (`thinking_budget=0`).
+  - For `pro` (Gemini 2.5 Pro), minimum thinking is enabled (`thinking_budget=128`).
 
 ## 4. Extending the Project
 - ➕ Add new mapping tasks by implementing new classes in `evaluation.py` and updating `generate_data.py`.

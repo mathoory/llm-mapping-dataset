@@ -1,12 +1,17 @@
+import logging
+def setup_logging(level):
+    logging.basicConfig(level=getattr(logging, level.upper(), logging.INFO), format='[%(levelname)s] %(message)s')
 import json
 import random
 import string
-from pathlib import Path
+import os
 import random
-from wordfreq import top_n_list
 import re
+
 import nltk
 from nltk.corpus import gutenberg, brown, reuters, webtext
+from wordfreq import top_n_list
+
 from evaluation import Mapping, UppercaseMap, RNAMap
 
 with open("./data/prompt.txt", 'r', encoding='utf-8') as f:
@@ -199,6 +204,8 @@ def generate_dataset_rna_random(n, lengths=(5, 20, 50)):
 
 def save_to_jsonl(data, filename):
     """Save dataset to JSONL file."""
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'w', encoding='utf-8') as f:
         for entry in data:
             f.write(json.dumps(entry, ensure_ascii=False) + '\n')
@@ -231,7 +238,9 @@ if __name__ == "__main__":
     parser.add_argument('--tasks', type=str, nargs='+', choices=ALL_TASK_CHOICES, default=ALL_TASK_CHOICES, help='Task types (space separated)')
     parser.add_argument('--size', type=int, default=40, help='Number of examples to generate per task, will be multiplied by number of difficulties (3) per subtask')
     parser.add_argument('--output', type=str, default='./data/examples.jsonl', help='Output path for generated data')
+    parser.add_argument('--log-level', type=str, default='INFO', help='Logging level (e.g., INFO, DEBUG, WARNING)')
 
     args = parser.parse_args()
+    setup_logging(args.log_level)
 
     generate_data(args.tasks, args.size, args.output)
