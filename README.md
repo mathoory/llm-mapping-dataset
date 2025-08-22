@@ -1,9 +1,10 @@
-# LLM Mapping Dataset
+
+# LLM Mapping Dataset 🚀
 
 ## 1. Project Overview
 This project provides a framework for generating and evaluating datasets for natural language processing (NLP) mapping tasks using large language models (LLMs). It supports tasks such as string case conversion and RNA-to-protein translation, and is designed for extensibility and reproducibility.
 
-## 2. Project Architecture
+## 2. Project Architecture 🗂️
 - **src/**: Main source code directory
   - `generate_data.py`: Generates datasets for various mapping tasks and saves them in JSONL format.
   - `run_eval.py`: Evaluates LLMs on the generated datasets and prints results.
@@ -15,14 +16,17 @@ This project provides a framework for generating and evaluating datasets for nat
 - **environment.yaml**: Conda environment specification (optional, for full-featured development).
 - **run_subtask.py**: Unified CLI for generating data and running evaluation.
 
-## 3. Running Instructions
+## 3. Running Instructions 🏃‍♂️
 
 ### Environment Setup
 Install dependencies with pip:
+
 ```bash
 pip install -r requirements.txt
 ```
+
 Or create the full environment with conda:
+
 ```bash
 conda env create -f environment.yaml
 conda activate nlp-final
@@ -30,32 +34,38 @@ conda activate nlp-final
 
 ### Data Generation
 Generate datasets for all tasks (default):
+
 ```bash
 python src/generate_data.py
 ```
+
 Or specify tasks and size:
+
 ```bash
 python src/generate_data.py --tasks lowercase rna --size 50 --output ./src/data/examples.jsonl
 ```
 
 ### Evaluation
 Run evaluation on a generated dataset:
+
 ```bash
 python src/run_eval.py
 ```
+
 Or use the unified CLI:
+
 ```bash
 python run_subtask.py --model pro --size 100 --tasks lowercase rna --eval
 ```
 
 ### Notes
-- You must provide a valid API key for Google GenAI in `src/key.secret`.
-- Generated datasets are saved in JSONL format in the specified output path.
-- Evaluation prints results with timestamps and confidence scores.
+- 🔑 You must provide a valid API key for Google GenAI in `src/key.secret`.
+- 📄 Generated datasets are saved in JSONL format in the specified output path.
+- 📝 Evaluation prints results with timestamps and confidence scores.
 
 ## 4. Extending the Project
-- Add new mapping tasks by implementing new classes in `evaluation.py` and updating `generate_data.py`.
-- Add new model aliases in `utils/llm.py` as needed.
+- ➕ Add new mapping tasks by implementing new classes in `evaluation.py` and updating `generate_data.py`.
+- 🛠️ Add new model aliases in `utils/llm.py` as needed.
 
 ---
 For further details, see comments in the source files.
