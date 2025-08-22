@@ -203,8 +203,35 @@ def save_to_jsonl(data, filename):
         for entry in data:
             f.write(json.dumps(entry, ensure_ascii=False) + '\n')
 
-# Generate and save dataset
+
+
+def generate_data(tasks, size, output_path):
+    if isinstance(tasks, str):
+        tasks = [tasks]
+    all_data = []
+    for task in tasks:
+        if task == "lowercase":
+            all_data.extend(generate_dataset_lower_random(size))
+        elif task == "lowercase_words":
+            all_data.extend(generate_dataset_lower_words(size))
+        elif task == "lowercase_text":
+            all_data.extend(generate_dataset_lower_text(size))
+        elif task == "rna":
+            all_data.extend(generate_dataset_rna_random(size))
+        else:
+            raise ValueError(f"Unknown task: {task}")
+    save_to_jsonl(all_data, output_path)
+
+ALL_TASK_CHOICES = ['lowercase', 'lowercase_words', 'lowercase_text', 'rna']
+
 if __name__ == "__main__":
-    dataset = generate_dataset_lower_random(3)
-    output_path = Path("./data/examples.jsonl")
-    save_to_jsonl(dataset, output_path)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Generate LLM Mapping Dataset")
+    parser.add_argument('--tasks', type=str, nargs='+', choices=ALL_TASK_CHOICES, default=ALL_TASK_CHOICES, help='Task types (space separated)')
+    parser.add_argument('--size', type=int, default=40, help='Number of examples to generate per task, will be multiplied by number of difficulties (3) per subtask')
+    parser.add_argument('--output', type=str, default='./data/examples.jsonl', help='Output path for generated data')
+
+    args = parser.parse_args()
+
+    generate_data(args.tasks, args.size, args.output)

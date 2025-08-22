@@ -2,9 +2,16 @@ import json
 from google import genai
 from google.genai import types
 
+
 class LLM:
-    def __init__(self, type="gemini-2.5-flash", api_key_path="key.secret"):
-        self.type = type
+    MODEL_ALIASES = {
+        "flash": "gemini-2.5-flash",
+        "pro": "gemini-2.5-pro",
+    }
+
+    def __init__(self, model="gemini-2.5-flash", api_key_path="key.secret"):
+        # Map alias to actual model name if present
+        self.model = self.MODEL_ALIASES.get(model, model)
         self.api_key_path = api_key_path
         self.client = self._create_client()
 
@@ -15,7 +22,7 @@ class LLM:
 
     def query(self, input, parse=False):
         response = self.client.models.generate_content(
-            model=self.type,
+            model=self.model,
             contents=input,
             config=types.GenerateContentConfig(
                 thinking_config=types.ThinkingConfig(thinking_budget=0) # Disables thinking
