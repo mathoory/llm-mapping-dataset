@@ -9,7 +9,7 @@ import nltk
 from nltk.corpus import gutenberg, brown, reuters, webtext
 from wordfreq import top_n_list
 
-from evaluation import Mapping, UppercaseMap, RNAMap
+from evaluation import Mapping, UppercaseMap, LowercaseMap, RNAMap
 
 with open("./data/prompt.txt", 'r', encoding='utf-8') as f:
     PROMPT_TEMPLATE = f.read()
@@ -17,53 +17,69 @@ with open("./data/prompt.txt", 'r', encoding='utf-8') as f:
 def gen_prompt(input, mapping: Mapping):
     return PROMPT_TEMPLATE.format(conversion=str(mapping), input=input)
 
+def get_direction(task):
+    if task.startswith("lowercase"):
+        return "lower_to_upper"
+    elif task.startswith("uppercase"):
+        return "upper_to_lower"
+    else:
+        return None
+
 def generate_random_string(length):
     """Generate a random lowercase string of given length."""
     return ''.join(random.choices(string.ascii_lowercase, k=length))
 
-def generate_dataset_lower_random(n, lengths=(5, 20, 50)):
-    """Generate dataset of lowercase:uppercase mappings."""
-    t = UppercaseMap()
+def generate_dataset_case_random(n, lengths=(5, 20, 50), direction="lower_to_upper"):
+    """Generate dataset of case conversion mappings (lower<->upper)."""
+    t = UppercaseMap() if direction == "lower_to_upper" else LowercaseMap()
     dataset = []
     difficulties = {length: diff for length, diff in zip(lengths, ["easy", "medium", "hard"])}
 
     for length in lengths:
         for _ in range(n):
-            lowercase_str = generate_random_string(length)
-            uppercase_str = t.translate(lowercase_str)
+            if direction == "lower_to_upper":
+                input_str = generate_random_string(length)
+                output_str = t.translate(input_str)
+            else:
+                input_str = generate_random_string(length).upper()
+                output_str = t.translate(input_str)
+
             dataset.append({
-                "prompt": gen_prompt(lowercase_str, t),
+                "prompt": gen_prompt(input_str, t),
                 "metadata": {
                     "difficulty": difficulties[length],
-                    "topic": "uppercase string"
+                    "topic": f"{direction.replace('_', ' ')} string"
                 },
-                "input": lowercase_str,
-                "output": uppercase_str
+                "input": input_str,
+                "output": output_str
             })
 
     return dataset
 
-def generate_dataset_lower_words(n, lengths=(10, 200, 1000)):
-    """Generate dataset of lowercase:uppercase mappings using real English words with spaces."""
-    t = UppercaseMap()
+def generate_dataset_case_words(n, lengths=(10, 200, 1000), direction="lower_to_upper"):
+    """Generate dataset of case conversion mappings using real English words with spaces."""
+    t = UppercaseMap() if direction == "lower_to_upper" else LowercaseMap()
     dataset = []
     difficulties = {length: diff for length, diff in zip(lengths, ["easy", "medium", "hard"])}
     WORDS = [w.lower() for w in top_n_list("en", n=50000) if w.isalpha()]
 
     for length in lengths:
         for _ in range(n):
-            # Pick `length` words and join with spaces
             words = random.choices(WORDS, k=length)
-            lowercase_str = " ".join(words)
-            uppercase_str = t.translate(lowercase_str)
+            if direction == "lower_to_upper":
+                input_str = " ".join(words)
+                output_str = t.translate(input_str)
+            else:
+                input_str = " ".join(words).upper()
+                output_str = t.translate(input_str)
             dataset.append({
-                "prompt": gen_prompt(lowercase_str, t),
+                "prompt": gen_prompt(input_str, t),
                 "metadata": {
                     "difficulty": difficulties[length],
-                    "topic": "uppercase words"
+                    "topic": f"{direction.replace('_', ' ')} words"
                 },
-                "input": lowercase_str,
-                "output": uppercase_str
+                "input": input_str,
+                "output": output_str
             })
 
     return dataset
@@ -104,74 +120,58 @@ def _random_span(text: str, target_chars: int, rng: random.Random) -> str:
 
     return snippet
 
-def generate_dataset_lower_text(
+def generate_dataset_case_text(
     n: int,
     lengths=(200, 800, 1600),
     *,
-    seed=42
+    seed=42,
+    direction="lower_to_upper"
 ):
     """
-    Generate dataset of lowercase:uppercase mappings using real text spans.
-
-    - Samples random contiguous character spans from NLTK corpora
-      (webtext, brown, gutenberg, reuters).
-    - Lowercases the input snippet; output is UppercaseMap().translate(lower).
-    - Scales to any n.
-
-    Args:
-        n: number of samples per length bucket
-        lengths: approximate character targets for difficulty buckets
-        seed: optional RNG seed
-
-    Returns:
-        list[dict]: each with prompt, metadata, input, output
+    Generate dataset of case conversion mappings using real text spans.
     """
     _ensure_corpora()
     rng = random.Random(seed)
 
-    # Build a pool of (corpus_name, fileids, corpus_obj.raw getter)
     sources = [
         ("webtext",  webtext.fileids(),  webtext.raw),
         ("gutenberg",gutenberg.fileids(),gutenberg.raw),
         ("reuters",  reuters.fileids(),  reuters.raw),
     ]
-
-    # Clean empty pools (just in case some corpora are unavailable locally)
     sources = [(name, fids, raw) for name, fids, raw in sources if fids]
-
     if not sources:
         raise RuntimeError("No NLTK corpora found after download; check your NLTK setup.")
 
-    t = UppercaseMap()
+    t = UppercaseMap() if direction == "lower_to_upper" else LowercaseMap()
     dataset = []
     difficulties = {length: diff for length, diff in zip(lengths, ["easy", "medium", "hard"])}
 
     for length in lengths:
         for _ in range(n):
-            # Pick a random doc from a random corpus
             corpus_name, fids, raw = rng.choice(sources)
             fid = rng.choice(fids)
-
             text = _clean_text(raw(fid))
             if not text:
-                continue  # try again next loop
-
+                continue
             snippet = _random_span(text, target_chars=length, rng=rng)
-            lowercase_str = snippet.lower()
-            uppercase_str = t.translate(lowercase_str)
-
+            if direction == "lower_to_upper":
+                input_str = snippet.lower()
+                output_str = t.translate(input_str)
+            else:
+                input_str = snippet.upper()
+                output_str = t.translate(input_str)
             dataset.append({
-                "prompt": gen_prompt(lowercase_str, t),
+                "prompt": gen_prompt(input_str, t),
                 "metadata": {
                     "difficulty": difficulties[length],
-                    "topic": "uppercase natural text",
+                    "topic": f"{direction.replace('_', ' ')} natural text",
                     "source_corpus": corpus_name,
                     "source_fileid": fid,
                     "target_chars": length,
                     "span_len": len(snippet),
                 },
-                "input": lowercase_str,
-                "output": uppercase_str,
+                "input": input_str,
+                "output": output_str,
             })
 
     return dataset
@@ -211,6 +211,7 @@ def save_to_jsonl(data, filename):
         for entry in data:
             f.write(json.dumps(entry, ensure_ascii=False) + '\n')
 
+    return filename_ts
 
 
 def generate_data(tasks, size, output_path):
@@ -218,19 +219,24 @@ def generate_data(tasks, size, output_path):
         tasks = [tasks]
     all_data = []
     for task in tasks:
-        if task == "lowercase":
-            all_data.extend(generate_dataset_lower_random(size))
-        elif task == "lowercase_words":
-            all_data.extend(generate_dataset_lower_words(size))
-        elif task == "lowercase_text":
-            all_data.extend(generate_dataset_lower_text(size))
+        direction = get_direction(task)
+        if task in ["lowercase", "uppercase"]:
+            all_data.extend(generate_dataset_case_random(size, direction=direction or "lower_to_upper"))
+        elif task in ["lowercase_words", "uppercase_words"]:
+            all_data.extend(generate_dataset_case_words(size, direction=direction or "lower_to_upper"))
+        elif task in ["lowercase_text", "uppercase_text"]:
+            all_data.extend(generate_dataset_case_text(size, direction=direction or "lower_to_upper"))
         elif task == "rna":
             all_data.extend(generate_dataset_rna_random(size))
         else:
             raise ValueError(f"Unknown task: {task}")
-    save_to_jsonl(all_data, output_path)
+    return save_to_jsonl(all_data, output_path)
 
-ALL_TASK_CHOICES = ['lowercase', 'lowercase_words', 'lowercase_text', 'rna']
+ALL_TASK_CHOICES = [
+    'lowercase', 'lowercase_words', 'lowercase_text',
+    'uppercase', 'uppercase_words', 'uppercase_text',
+    'rna'
+]
 
 if __name__ == "__main__":
     import argparse

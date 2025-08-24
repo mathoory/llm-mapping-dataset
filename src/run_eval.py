@@ -70,7 +70,7 @@ def run_eval(model_name, data_path, save_outputs=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LLM Mapping Dataset Runner")
     parser.add_argument('--model', type=str, default='flash', help='Model name for evaluation')
-    parser.add_argument('--data', type=str, default='./data/examples.jsonl', help='Output path for generated data')
+    parser.add_argument('--dataset', type=str, default='./data/examples.jsonl', help='Path for generated data')
     parser.add_argument('--save_outputs', action='store_true', default=False, help='Save results and log files in runs directory (default: False)')
 
     args = parser.parse_args()

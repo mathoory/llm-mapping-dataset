@@ -16,11 +16,11 @@ def main():
 	args = parser.parse_args()
 
 	# Generate data
-	generate_data(args.tasks, args.size, args.output)
+	file_path = generate_data(args.tasks, args.size, args.output)
 
 	# Run evaluation if requested
 	if args.eval:
-		run_eval(args.model, args.output, save_outputs=args.save_outputs)
+		run_eval(args.model, file_path, save_outputs=args.save_outputs)
 
 if __name__ == "__main__":
 	main()

@@ -46,7 +46,16 @@ class LowercaseMap(Mapping):
 
 topic_to_mapping = {
     "uppercase string": UppercaseMap(),
+    "lowercase string": LowercaseMap(),
+    "lower to upper string": UppercaseMap(),
+    "upper to lower string": LowercaseMap(),
     "uppercase words": UppercaseMap(),
+    "lowercase words": LowercaseMap(),
+    "lower to upper words": UppercaseMap(),
+    "upper to lower words": LowercaseMap(),
     "uppercase natural text": UppercaseMap(),
+    "lowercase natural text": LowercaseMap(),
+    "lower to upper natural text": UppercaseMap(),
+    "upper to lower natural text": LowercaseMap(),
     "RNA": RNAMap()
 }
