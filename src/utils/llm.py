@@ -1,15 +1,31 @@
 import time
 import json
-import logging
+## Remove logging import
 from google import genai
 from google.genai import types
+from google.genai.errors import ServerError, ClientError
 
 
 class LLM:
+    LOG_LEVELS = ["DEBUG", "INFO"]
+    log_level = "INFO"
+
+    @classmethod
+    def set_log_level(cls, level):
+        if level in cls.LOG_LEVELS:
+            cls.log_level = level
+        else:
+            raise ValueError(f"Invalid log level: {level}")
+
+    @classmethod
+    def log(cls, msg, level="INFO"):
+        levels = {"DEBUG": 0, "INFO": 1}
+        if levels[level] >= levels[cls.log_level]:
+            print(f"[{level}] {time.strftime('%Y-%m-%d %H:%M:%S')} | {msg}")
     # Rate and global limits per model
     RATE_LIMITS = {
         "gemini-2.5-flash": {"per_minute": 10, "global": 250},
-        "gemini-2.5-pro": {"per_minute": 5, "global": 100},
+        "gemini-2.5-pro": {"per_minute": 3, "global": 50},
     }
 
     # Instance state for limits
@@ -32,8 +48,6 @@ class LLM:
         self.thinking_budget = self.THINKING_BUDGETS.get(self.model, 0)
         self.rate_limit = self.RATE_LIMITS.get(self.model, {"per_minute": float("inf"), "global": float("inf")})
 
-    # ...existing code...
-
     def _create_client(self):
         with open(self.api_key_path, "r") as f:
             api_key = f.read().strip()
@@ -51,68 +65,77 @@ class LLM:
         if total > self.rate_limit["global"]:
             raise RuntimeError(f"Global query limit exceeded for model {self.model} ({self.rate_limit['global']})")
 
-        batch_size = self.rate_limit["per_minute"]
+        per_minute = self.rate_limit["per_minute"]
+        queries_left = per_minute
+        last_reset = time.time()
         results = []
-        for i in range(0, total, batch_size):
-            batch = prompts[i:i+batch_size]
-            batch_results = []
-            for prompt in batch:
-                logging.info(f"Sending prompt to model")
-                from google.genai.errors import ServerError, ClientError
-                for attempt in range(3):
-                    try:
-                        response = self.client.models.generate_content(
-                            model=self.model,
-                            contents=prompt,
-                            config=types.GenerateContentConfig(
-                                thinking_config=types.ThinkingConfig(thinking_budget=self.thinking_budget)
-                            ),
-                        )
-                        logging.debug(f"Received response:\n{response}")
-                        text = getattr(response, "text", "")
-                        if parse:
-                            batch_results.append(self.parse_response(text))
-                        else:
-                            batch_results.append(text)
-                        break
-                    except ServerError as e:
-                        status_code = getattr(e, 'status_code', None)
-                        response_json = getattr(e, 'response_json', None)
-                        logging.error(f"ServerError (HTTP 500) from model: {e}. Status code: {status_code}, Response JSON: {response_json}. Attempt {attempt+1}/3")
-                        if attempt == 2:
-                            logging.error(f"All 3 retries failed for prompt, skipping this prompt.")
-                            batch_results.append(None)
-                        else:
-                            time.sleep(2)
-                    except ClientError as e:
-                        status_code = getattr(e, 'status_code', None)
-                        response_json = getattr(e, 'response_json', None)
-                        # Try to parse status code from exception string if not present
-                        if status_code is None:
-                            import re
-                            match = re.search(r'(\b\d{3}\b)', str(e))
-                            if match:
-                                status_code = int(match.group(1))
-                        if status_code == 429 or 'RESOURCE_EXHAUSTED' in str(e):
-                            logging.error(f"ClientError (HTTP 429) RESOURCE_EXHAUSTED: {e}. Status code: {status_code}, Response JSON: {response_json}. Waiting 60 seconds before retry.")
-                            time.sleep(60)
-                        else:
-                            logging.error(f"ClientError from model: {e}. Status code: {status_code}, Response JSON: {response_json}. Attempt {attempt+1}/3")
-                            if attempt == 2:
-                                logging.error(f"All 3 retries failed for prompt, skipping this prompt.")
-                                batch_results.append(None)
-                            else:
-                                time.sleep(2)
-            results.extend(batch_results)
-            if i + batch_size < total:
-                logging.info(f"Rate limit reached for model {self.model}: sleeping for 60 seconds...")
+        for idx, prompt in enumerate(prompts):
+            self.log(f"Sending prompt to model", "DEBUG")
+            for attempt in range(3):
+                try:
+                    response = self.client.models.generate_content(
+                        model=self.model,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            thinking_config=types.ThinkingConfig(thinking_budget=self.thinking_budget)
+                        ),
+                    )
+                    self.log(f"Received response:\n{getattr(response, 'text', '')}", "DEBUG")
+                    time.sleep(0.5)
+                    text = getattr(response, "text", "")
+                    if parse:
+                        results.append(self.parse_response(text))
+                    else:
+                        results.append(text)
+                    queries_left -= 1
+                    break
+                except ServerError as e:
+                    self._handle_server_error(e, attempt, results)
+                    if attempt == 2:
+                        queries_left -= 1
+                except ClientError as e:
+                    self._handle_client_error(e, attempt, results)
+                    queries_left = per_minute
+            # Rate limit check after each prompt
+            if queries_left == 0 and idx < total - 1:
+                self.log(f"Rate limit reached for model {self.model}: sleeping for 60 seconds...", "INFO")
                 time.sleep(60)
+                queries_left = per_minute
         return results
+
+    def _handle_server_error(self, e, attempt, results):
+        status_code = getattr(e, 'status_code', None)
+        response_json = getattr(e, 'response_json', None)
+        self.log(f"ServerError (HTTP 500) from model: {e}. Status code: {status_code}, Response JSON: {response_json}. Attempt {attempt+1}/3", "INFO")
+        if attempt == 2:
+            self.log(f"All 3 retries failed for prompt, skipping this prompt.", "INFO")
+            results.append(None)
+        else:
+            time.sleep(2)
+
+    def _handle_client_error(self, e, attempt, results):
+        status_code = getattr(e, 'status_code', None)
+        response_json = getattr(e, 'response_json', None)
+        # Try to parse status code from exception string if not present
+        if status_code is None:
+            import re
+            match = re.search(r'(\b\d{3}\b)', str(e))
+            if match:
+                status_code = int(match.group(1))
+        if status_code == 429 or 'RESOURCE_EXHAUSTED' in str(e):
+            self.log(f"ClientError (HTTP 429) RESOURCE_EXHAUSTED: {e}. Status code: {status_code}, Response JSON: {response_json}. Waiting 60 seconds before retry.", "INFO")
+            time.sleep(60)
+        else:
+            self.log(f"ClientError from model: {e}. Status code: {status_code}, Response JSON: {response_json}. Attempt {attempt+1}/3", "INFO")
+            raise e
 
     def parse_response(self, response):
         # Extract JSON block by slicing from first '{' to last '}'
         start = response.find('{')
         end = response.rfind('}')
+        error = None
+        extracted_output = ""
+        confidence_score = None
         if start != -1 and end != -1 and end > start:
             try:
                 response_json = json.loads(response[start:end+1])
@@ -121,12 +144,8 @@ class LLM:
                 if extracted_output.startswith('{') and extracted_output.endswith('}'):
                     extracted_output = extracted_output[1:-1].strip()
                 confidence_score = response_json.get("confidence_score", None)
-            except Exception:
-                print(f"Error parsing response: {response}")
-                extracted_output = ""
-                confidence_score = None
+            except Exception as e:
+                error = f"json_error"
         else:
-            extracted_output = ""
-            confidence_score = None
-
-        return extracted_output, confidence_score
+            error = "structure_error"
+        return {"output": extracted_output, "confidence": confidence_score, "error": error}

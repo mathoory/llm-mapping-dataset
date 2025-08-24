@@ -27,7 +27,7 @@ class RNAMap(Mapping):
         
         return ''.join(protein_seq)
     def __str__(self):
-        return "RNA sequence to protein sequence"
+        return "RNA sequence into a protein sequence using single-letter codes without any spaces or separators"
 
 class UppercaseMap(Mapping):
     def translate(self, input):

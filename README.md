@@ -46,6 +46,7 @@ python src/generate_data.py --tasks lowercase rna --size 50 --output ./src/data/
 ```
 
 ### Evaluation
+
 Run evaluation on a generated dataset:
 
 ```bash
@@ -57,6 +58,22 @@ Or use the unified CLI:
 ```bash
 python run_subtask.py --model pro --size 100 --tasks lowercase rna --eval
 ```
+
+#### Saving Outputs
+
+To save evaluation results and logs to the `runs` directory, use the `--save_outputs` flag:
+
+```bash
+python run_eval.py --model flash --data ./data/examples.jsonl --save_outputs
+```
+
+Or from `run_subtask.py`:
+
+```bash
+python run_subtask.py --model flash --size 100 --tasks task1 task2 --save_outputs
+```
+
+By default, outputs are not saved unless `--save_outputs` is specified.
 
 
 ### Notes

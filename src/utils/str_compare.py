@@ -32,6 +32,17 @@ class Mistake:
 
 @dataclass
 class EvaluationResult:
+    @property
+    def substitutions(self):
+        return sum(1 for m in self.mistakes if m.kind == "sub")
+
+    @property
+    def insertions(self):
+        return sum(1 for m in self.mistakes if m.kind == "ins")
+
+    @property
+    def deletions(self):
+        return sum(1 for m in self.mistakes if m.kind == "del")
     num_mistakes: int
     pct_mistakes: float
     mistakes: List[Mistake]
@@ -42,13 +53,9 @@ class EvaluationResult:
         if not self.mistakes:
             lines.append("  ✅ No mistakes!")
         else:
-            # Count mistake types and print in one line
-            type_counts = {"sub": 0, "ins": 0, "del": 0}
-            for m in self.mistakes:
-                type_counts[m.kind] += 1
             lines.append(
                 f"Mistakes: {self.num_mistakes} ({self.pct_mistakes:.2f}%) "
-                f"[sub: {type_counts['sub']}, ins: {type_counts['ins']}, del: {type_counts['del']}]"
+                f"[substitutions: {self.substitutions}, insertions: {self.insertions}, deletions: {self.deletions}]"
             )
         if self.alignment:
             lines.append("\nAlignment:\n" + self.alignment)
