@@ -1,0 +1,8 @@
+Please convert the following {conversion}: 
+{{{input}}}
+Please provide your output and a confidence score between
+0% to 100% in the following JSON format:
+{{
+"answer": "Your answer here",
+"confidence_score": number
+}}
