@@ -13,14 +13,12 @@ class Mistake:
     output_context: str
 
     def __repr__(self):
-        kind_map = {"sub": "Substitution", "ins": "Insertion", "del": "Deletion"}
-
         def show_char(ch):
             return repr(ch) if ch is not None else "∅"  # gap
 
         # One compact header line + two context lines
         header = (
-            f"- {kind_map[self.kind]}: "
+            f"- {self.kind}: "
             f"expected[{self.idx_expected}]={show_char(self.expected_char)} | "
             f"output[{self.idx_output}]={show_char(self.output_char)}"
         )
@@ -55,7 +53,7 @@ class EvaluationResult:
         else:
             lines.append(
                 f"Mistakes: {self.num_mistakes} ({self.pct_mistakes:.2f}%) "
-                f"[substitutions: {self.substitutions}, insertions: {self.insertions}, deletions: {self.deletions}]"
+                f"[sub: {self.substitutions}, ins: {self.insertions}, del: {self.deletions}]"
             )
         if self.alignment:
             lines.append("\nAlignment:\n" + self.alignment)

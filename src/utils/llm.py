@@ -25,7 +25,7 @@ class LLM:
     # Rate and global limits per model
     RATE_LIMITS = {
         "gemini-2.5-flash": {"per_minute": 10, "global": 250},
-        "gemini-2.5-pro": {"per_minute": 3, "global": 50},
+        "gemini-2.5-pro": {"per_minute": 2, "global": 50},
     }
 
     # Instance state for limits
@@ -67,7 +67,6 @@ class LLM:
 
         per_minute = self.rate_limit["per_minute"]
         queries_left = per_minute
-        last_reset = time.time()
         results = []
         for idx, prompt in enumerate(prompts):
             self.log(f"Sending prompt to model", "DEBUG")
@@ -80,9 +79,14 @@ class LLM:
                             thinking_config=types.ThinkingConfig(thinking_budget=self.thinking_budget)
                         ),
                     )
-                    self.log(f"Received response:\n{getattr(response, 'text', '')}", "DEBUG")
                     time.sleep(0.5)
-                    text = getattr(response, "text", "")
+
+                    if getattr(response, "text", None) is None:
+                        self.log("Received response.text=None, retrying...", "INFO")
+                        continue  # retry without decrementing queries_left
+
+                    self.log(f"Received response:\n{response.text}", "DEBUG")
+                    text = response.text
                     if parse:
                         results.append(self.parse_response(text))
                     else:

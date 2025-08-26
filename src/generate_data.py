@@ -148,12 +148,22 @@ def generate_dataset_case_text(
 
     for length in lengths:
         for _ in range(n):
-            corpus_name, fids, raw = rng.choice(sources)
-            fid = rng.choice(fids)
-            text = _clean_text(raw(fid))
-            if not text:
+            # Try up to 10 times to get a valid snippet
+            for attempt in range(10):
+                corpus_name, fids, raw = rng.choice(sources)
+                fid = rng.choice(fids)
+                text = _clean_text(raw(fid))
+                if not text:
+                    continue
+                snippet = _random_span(text, target_chars=length, rng=rng)
+                # If any non-ASCII alphabetic character is present, retry
+                if any((not c.isascii() and c.isalpha()) for c in snippet):
+                    continue
+                break
+            else:
+                # If no valid snippet found after 10 tries, skip
                 continue
-            snippet = _random_span(text, target_chars=length, rng=rng)
+
             if direction == "lower_to_upper":
                 input_str = snippet.lower()
                 output_str = t.translate(input_str)
@@ -203,16 +213,9 @@ def save_to_jsonl(data, filename):
     """Save dataset to JSONL file."""
     # Ensure output directory exists
     os.makedirs(os.path.dirname(filename), exist_ok=True)
-    from datetime import datetime
-    base, ext = os.path.splitext(filename)
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename_ts = f"{base}_{timestamp}{ext}"
-    with open(filename_ts, 'w', encoding='utf-8') as f:
+    with open(filename, 'w', encoding='utf-8') as f:
         for entry in data:
             f.write(json.dumps(entry, ensure_ascii=False) + '\n')
-
-    return filename_ts
-
 
 def generate_data(tasks, size, output_path):
     if isinstance(tasks, str):
