@@ -1,5 +1,6 @@
 import time
 import json
+from tqdm import tqdm
 ## Remove logging import
 from google import genai
 from google.genai import types
@@ -21,6 +22,8 @@ class LLM:
     def log(cls, msg, level="INFO"):
         levels = {"DEBUG": 0, "INFO": 1}
         if levels[level] >= levels[cls.log_level]:
+            # Print a newline to avoid overwriting tqdm progress bar
+            print()
             print(f"[{level}] {time.strftime('%Y-%m-%d %H:%M:%S')} | {msg}")
     # Rate and global limits per model
     RATE_LIMITS = {
@@ -68,7 +71,7 @@ class LLM:
         per_minute = self.rate_limit["per_minute"]
         queries_left = per_minute
         results = []
-        for idx, prompt in enumerate(prompts):
+        for idx, prompt in enumerate(tqdm(prompts, desc="Querying", unit="prompt")):
             self.log(f"Sending prompt to model", "DEBUG")
             for attempt in range(3):
                 try:
@@ -79,7 +82,7 @@ class LLM:
                             thinking_config=types.ThinkingConfig(thinking_budget=self.thinking_budget)
                         ),
                     )
-                    time.sleep(0.5)
+                    #time.sleep(0.5)
 
                     if getattr(response, "text", None) is None:
                         self.log("Received response.text=None, retrying...", "INFO")
@@ -118,19 +121,16 @@ class LLM:
             time.sleep(2)
 
     def _handle_client_error(self, e, attempt, results):
-        status_code = getattr(e, 'status_code', None)
-        response_json = getattr(e, 'response_json', None)
-        # Try to parse status code from exception string if not present
-        if status_code is None:
-            import re
-            match = re.search(r'(\b\d{3}\b)', str(e))
-            if match:
-                status_code = int(match.group(1))
-        if status_code == 429 or 'RESOURCE_EXHAUSTED' in str(e):
-            self.log(f"ClientError (HTTP 429) RESOURCE_EXHAUSTED: {e}. Status code: {status_code}, Response JSON: {response_json}. Waiting 60 seconds before retry.", "INFO")
+        s = str(e)
+        if 'PerMinute' in s:
+            self.log("Minute quota exceeded (429). Waiting 60 seconds before retry.", "INFO")
             time.sleep(60)
+            return
+        elif 'PerDay' in s:
+            self.log("Day quota exceeded (429). Aborting further requests.", "INFO")
+            raise e
         else:
-            self.log(f"ClientError from model: {e}. Status code: {status_code}, Response JSON: {response_json}. Attempt {attempt+1}/3", "INFO")
+            self.log(f"ClientError from model: {e}. Attempt {attempt+1}/3", "INFO")
             raise e
 
     def parse_response(self, response):
