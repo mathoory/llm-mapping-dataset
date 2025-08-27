@@ -63,6 +63,8 @@ class LLM:
         return self.query_batch([input], parse=parse)[0]
 
     def query_batch(self, prompts, parse=False):
+        # This function is a generator: it yields each result as soon as it's ready.
+        # Using a generator allows partial results to be processed and saved even if interrupted (e.g., Ctrl+C).
         # Check global limit
         total = len(prompts)
         if total > self.rate_limit["global"]:
@@ -70,7 +72,6 @@ class LLM:
 
         per_minute = self.rate_limit["per_minute"]
         queries_left = per_minute
-        results = []
         for idx, prompt in enumerate(tqdm(prompts, desc="Querying", unit="prompt")):
             self.log(f"Sending prompt to model", "DEBUG")
             for attempt in range(3):
@@ -91,36 +92,35 @@ class LLM:
                     self.log(f"Received response:\n{response.text}", "DEBUG")
                     text = response.text
                     if parse:
-                        results.append(self.parse_response(text))
+                        yield self.parse_response(text)
                     else:
-                        results.append(text)
+                        yield text
                     queries_left -= 1
                     break
                 except ServerError as e:
-                    self._handle_server_error(e, attempt, results)
+                    self._handle_server_error(e, attempt)
                     if attempt == 2:
                         queries_left -= 1
+                        # Do not yield, just continue to next prompt
                 except ClientError as e:
-                    self._handle_client_error(e, attempt, results)
+                    self._handle_client_error(e, attempt)
                     queries_left = per_minute
             # Rate limit check after each prompt
             if queries_left == 0 and idx < total - 1:
                 self.log(f"Rate limit reached for model {self.model}: sleeping for 60 seconds...", "INFO")
                 time.sleep(60)
                 queries_left = per_minute
-        return results
 
-    def _handle_server_error(self, e, attempt, results):
+    def _handle_server_error(self, e, attempt):
         status_code = getattr(e, 'status_code', None)
         response_json = getattr(e, 'response_json', None)
         self.log(f"ServerError (HTTP 500) from model: {e}. Status code: {status_code}, Response JSON: {response_json}. Attempt {attempt+1}/3", "INFO")
         if attempt == 2:
             self.log(f"All 3 retries failed for prompt, skipping this prompt.", "INFO")
-            results.append(None)
         else:
             time.sleep(2)
 
-    def _handle_client_error(self, e, attempt, results):
+    def _handle_client_error(self, e, attempt):
         s = str(e)
         if 'PerMinute' in s:
             self.log("Minute quota exceeded (429). Waiting 60 seconds before retry.", "INFO")

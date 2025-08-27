@@ -16,9 +16,6 @@ def main():
 
 	args = parser.parse_args()
 
-	if args.verbose:
-		from utils.llm import LLM
-		LLM.set_log_level("DEBUG")
 
 	from datetime import datetime
 	timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -33,7 +30,7 @@ def main():
 
 	# Run evaluation if requested
 	if args.eval:
-		run_eval(args.model, output_with_ts, save_outputs=args.save_outputs)
+		run_eval(args.model, output_with_ts, save_outputs=args.save_outputs, verbose=args.verbose)
 
 if __name__ == "__main__":
 	main()

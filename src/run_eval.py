@@ -7,74 +7,91 @@ from datetime import datetime
 
 
 
-def run_eval(model_name, data_path, save_outputs=False):
+def run_eval(model_name, data_path, save_outputs=False, verbose=False):
+    from utils.llm import LLM
+    if verbose:
+        LLM.set_log_level("DEBUG")
     llm = LLM(model=model_name)
     examples = []
-    with open(data_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            examples.append(json.loads(line))
-
-    prompts = [ex["prompt"] for ex in examples]
-    outputs = llm.query_batch(prompts, parse=True)
-
     results_json = []
     log_lines = []
-    for example, output_dict in zip(examples, outputs):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # tqdm for progress bar and accuracy
+    from tqdm import tqdm
+    num_correct = 0
+    try:
+        with open(data_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                examples.append(json.loads(line))
 
-        # unpack output_dict
-        extracted_output = output_dict.get("output", "")
-        confidence_score = output_dict.get("confidence", None)
-        error = output_dict.get("error", None)
+        prompts = [ex["prompt"] for ex in examples]
+        outputs_iter = llm.query_batch(prompts, parse=True)
+        total = len(examples)
+        with tqdm(total=total, desc="Evaluating") as pbar:
+            for example, output_dict in zip(examples, outputs_iter):
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # unpack example metadata
-        topic = example["metadata"].get("topic", "")
-        difficulty = example["metadata"].get("difficulty", "")
+                # unpack output_dict
+                extracted_output = output_dict.get("output", "")
+                confidence_score = output_dict.get("confidence", None)
+                error = output_dict.get("error", None)
 
-        # evaluate response
-        res = topic_to_mapping[topic].evaluate(example["input"], extracted_output)
+                # unpack example metadata
+                topic = example["metadata"].get("topic", "")
+                difficulty = example["metadata"].get("difficulty", "")
 
-        log_line = f"[{timestamp}]{' [error: {error}] ' if error else ' '}[{topic}] [{difficulty}] [{confidence_score}] {res}"
-        print(log_line)
-        log_lines.append(log_line)
+                # evaluate response
+                res = topic_to_mapping[topic].evaluate(example["input"], extracted_output)
 
-        result_dict = {
-            "INPUT": example.get("input", ""),
-            "OUTPUT": extracted_output,
-            "EXP": example.get("output", None),
-            "CONF": confidence_score,
-            "ERRORS": {
-                "SUBSTITUTIONS": res.substitutions,
-                "INSERTIONS": res.insertions,
-                "DELETIONS": res.deletions
-            },
-            "MODEL": model_name,
-            "TOPIC": topic,
-            "DIFFICULTY": difficulty,
-            "ERR": error
-        }
-        results_json.append(result_dict)
+                # Count correct (no mistakes)
+                if res:
+                    num_correct += 1
+                running_accuracy = num_correct / (pbar.n + 1) * 100
+                pbar.set_postfix({"accuracy": f"{running_accuracy:.2f}%"})
+                pbar.update(1)
 
-    if save_outputs:
-        # Use the timestamp from the dataset filename
-        import os
-        base = os.path.basename(data_path)
-        # Expecting format: examples_YYYYMMDD_HHMMSS.jsonl
-        import re
-        m = re.search(r'_(\d{8}_\d{6})', base)
-        if m:
-            timestamp = m.group(1)
-        else:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        out_filename = f"runs/results_{timestamp}.json"
-        log_filename = f"runs/run_log_{timestamp}.txt"
-        with open(out_filename, "w", encoding="utf-8") as f:
-            json.dump(results_json, f, ensure_ascii=False, indent=2)
-        with open(log_filename, "w", encoding="utf-8") as f:
-            for line in log_lines:
-                f.write(line + "\n")
-        print(f"Results written to {out_filename}")
-        print(f"Log written to {log_filename}")
+                log_line = f"[{timestamp}]{' [error: {error}] ' if error else ' '}[{topic}] [{difficulty}] [{confidence_score}] {res}"
+                # Only print log_line if verbose mode is enabled
+                if verbose:
+                    print(log_line)
+                log_lines.append(log_line)
+
+                result_dict = {
+                    "INPUT": example.get("input", ""),
+                    "OUTPUT": extracted_output,
+                    "EXP": example.get("output", None),
+                    "CONF": confidence_score,
+                    "ERRORS": {
+                        "SUBSTITUTIONS": res.substitutions,
+                        "INSERTIONS": res.insertions,
+                        "DELETIONS": res.deletions
+                    },
+                    "MODEL": model_name,
+                    "TOPIC": topic,
+                    "DIFFICULTY": difficulty,
+                    "ERR": error
+                }
+                results_json.append(result_dict)
+    finally:
+        if save_outputs:
+            # Use the timestamp from the dataset filename
+            import os
+            base = os.path.basename(data_path)
+            # Expecting format: examples_YYYYMMDD_HHMMSS.jsonl
+            import re
+            m = re.search(r'_(\d{8}_\d{6})', base)
+            if m:
+                timestamp = m.group(1)
+            else:
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            out_filename = f"runs/results_{timestamp}.json"
+            log_filename = f"runs/run_log_{timestamp}.txt"
+            with open(out_filename, "w", encoding="utf-8") as f:
+                json.dump(results_json, f, ensure_ascii=False, indent=2)
+            with open(log_filename, "w", encoding="utf-8") as f:
+                for line in log_lines:
+                    f.write(line + "\n")
+            print(f"Results written to {out_filename}")
+            print(f"Log written to {log_filename}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LLM Mapping Dataset Runner")
@@ -87,4 +104,4 @@ if __name__ == "__main__":
 
     if args.verbose:
         LLM.set_log_level("DEBUG")
-    run_eval(args.model, args.dataset, save_outputs=args.save_outputs)
+    run_eval(args.model, args.dataset, save_outputs=args.save_outputs, verbose=args.verbose)
