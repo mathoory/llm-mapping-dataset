@@ -15,9 +15,8 @@ def run_eval(model_name, data_path, save_outputs=False, verbose=False):
     examples = []
     results_json = []
     log_lines = []
-    # tqdm for progress bar and accuracy
-    from tqdm import tqdm
-    num_correct = 0
+    # The try/finally ensures that partial results and logs are always saved,
+    # even if the process is interrupted or an error occurs.
     try:
         with open(data_path, 'r', encoding='utf-8') as f:
             for line in f:
@@ -25,52 +24,43 @@ def run_eval(model_name, data_path, save_outputs=False, verbose=False):
 
         prompts = [ex["prompt"] for ex in examples]
         outputs_iter = llm.query_batch(prompts, parse=True)
-        total = len(examples)
-        with tqdm(total=total, desc="Evaluating") as pbar:
-            for example, output_dict in zip(examples, outputs_iter):
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        for example, output_dict in zip(examples, outputs_iter):
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                # unpack output_dict
-                extracted_output = output_dict.get("output", "")
-                confidence_score = output_dict.get("confidence", None)
-                error = output_dict.get("error", None)
+            # unpack output_dict
+            extracted_output = output_dict.get("output", "")
+            confidence_score = output_dict.get("confidence", None)
+            error = output_dict.get("error", None)
 
-                # unpack example metadata
-                topic = example["metadata"].get("topic", "")
-                difficulty = example["metadata"].get("difficulty", "")
+            # unpack example metadata
+            topic = example["metadata"].get("topic", "")
+            difficulty = example["metadata"].get("difficulty", "")
 
-                # evaluate response
-                res = topic_to_mapping[topic].evaluate(example["input"], extracted_output)
+            # evaluate response
+            res = topic_to_mapping[topic].evaluate(example["input"], extracted_output)
 
-                # Count correct (no mistakes)
-                if res:
-                    num_correct += 1
-                running_accuracy = num_correct / (pbar.n + 1) * 100
-                pbar.set_postfix({"accuracy": f"{running_accuracy:.2f}%"})
-                pbar.update(1)
+            log_line = f"[{timestamp}]{' [error: {error}] ' if error else ' '}[{topic}] [{difficulty}] [{confidence_score}] {res}"
+            # Only print log_line if verbose mode is enabled
+            if verbose:
+                print(log_line)
+            log_lines.append(log_line)
 
-                log_line = f"[{timestamp}]{' [error: {error}] ' if error else ' '}[{topic}] [{difficulty}] [{confidence_score}] {res}"
-                # Only print log_line if verbose mode is enabled
-                if verbose:
-                    print(log_line)
-                log_lines.append(log_line)
-
-                result_dict = {
-                    "INPUT": example.get("input", ""),
-                    "OUTPUT": extracted_output,
-                    "EXP": example.get("output", None),
-                    "CONF": confidence_score,
-                    "ERRORS": {
-                        "SUBSTITUTIONS": res.substitutions,
-                        "INSERTIONS": res.insertions,
-                        "DELETIONS": res.deletions
-                    },
-                    "MODEL": model_name,
-                    "TOPIC": topic,
-                    "DIFFICULTY": difficulty,
-                    "ERR": error
-                }
-                results_json.append(result_dict)
+            result_dict = {
+                "INPUT": example.get("input", ""),
+                "OUTPUT": extracted_output,
+                "EXP": example.get("output", None),
+                "CONF": confidence_score,
+                "ERRORS": {
+                    "SUBSTITUTIONS": res.substitutions,
+                    "INSERTIONS": res.insertions,
+                    "DELETIONS": res.deletions
+                },
+                "MODEL": model_name,
+                "TOPIC": topic,
+                "DIFFICULTY": difficulty,
+                "ERR": error
+            }
+            results_json.append(result_dict)
     finally:
         if save_outputs:
             # Use the timestamp from the dataset filename
