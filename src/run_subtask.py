@@ -1,5 +1,6 @@
+import os
 import argparse
-from pathlib import Path
+from datetime import datetime
 from generate_data import generate_data, ALL_TASK_CHOICES
 from run_eval import run_eval
 
@@ -16,12 +17,8 @@ def main():
 
 	args = parser.parse_args()
 
-
-	from datetime import datetime
-	timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-
 	# Inject timestamp into output path
-	import os
+	timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 	base, ext = os.path.splitext(args.output)
 	output_with_ts = f"{base}_{timestamp}{ext}"
 
