@@ -22,7 +22,7 @@ def load_examples(data_path, size=None):
     return examples
 
 
-def save_outputs_and_logs(data_path, results_json, log_lines):
+def save_outputs_and_logs(data_path, results_json, log_lines, model_name):
     """Save results and logs to files with timestamped filenames."""
     base = os.path.basename(data_path)
     # Expecting format: examples_YYYYMMDD_HHMMSS.jsonl
@@ -32,11 +32,6 @@ def save_outputs_and_logs(data_path, results_json, log_lines):
         timestamp = m.group(1)
     else:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    # Get model name from results_json if available, else fallback to 'model'
-    if results_json and isinstance(results_json, list) and "MODEL" in results_json[0]:
-        model_name = results_json[0]["MODEL"]
-    else:
-        model_name = "model"
     # Sanitize model name for filename
     safe_model = ''.join(c if c.isalnum() or c in ['-', '_'] else '_' for c in model_name)
     out_base = f"runs/results_{safe_model}_{timestamp}.json"
@@ -115,7 +110,7 @@ def run_eval(model_name, data_path, save_outputs=False, verbose=False, size=None
             results_json.append(result_dict)
     finally:
         if save_outputs:
-            save_outputs_and_logs(data_path, results_json, log_lines)
+            save_outputs_and_logs(data_path, results_json, log_lines, model_name)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LLM Mapping Dataset Runner")
