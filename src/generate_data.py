@@ -7,9 +7,10 @@ import re
 
 import nltk
 from nltk.corpus import gutenberg, brown, reuters, webtext
+import pycountry
 from wordfreq import top_n_list
 
-from evaluation import Mapping, UppercaseMap, LowercaseMap, RNAMap
+from evaluation import CountryMap, Mapping, UppercaseMap, LowercaseMap, RNAMap
 
 with open("./data/prompt.txt", 'r', encoding='utf-8') as f:
     PROMPT_TEMPLATE = f.read()
@@ -209,6 +210,39 @@ def generate_dataset_rna_random(n, lengths=(5, 20, 50)):
 
     return dataset
 
+def generate_dataset_country_random(n, lengths=(5, 20, 50)):
+    """Generate dataset of random country codes to country names."""
+    t = CountryMap()
+    countries = list(pycountry.countries)
+    one_word_countries = [c for c in pycountry.countries if ' ' not in c.name]
+
+    dataset = []
+    difficulties = {length: diff for length, diff in zip(lengths, ["easy", "medium", "hard"])}
+
+    for length in lengths:
+        for _ in range(n):
+            if difficulties[length] == "easy":
+                # Only use countries whose names are a single word (no spaces)
+                country_objects = random.choices(one_word_countries, k=length)
+            else:
+                country_objects = random.choices(countries, k=length)
+
+            country_codes = [country.alpha_2 for country in country_objects]
+            country_names_str = t.translate(country_codes)
+            country_codes_str = ' '.join(country_codes)
+
+            dataset.append({
+                "prompt": gen_prompt(country_codes_str, t),
+                "metadata": {
+                    "difficulty": difficulties[length],
+                    "topic": "country code to country"
+                },
+                "input": country_codes_str,
+                "output": "; ".join(country_names_str)
+            })
+
+    return dataset
+
 def save_to_jsonl(data, filename):
     """Save dataset to JSONL file."""
     # Ensure output directory exists
@@ -231,6 +265,8 @@ def generate_data(tasks, size, output_path):
             all_data.extend(generate_dataset_case_text(size, direction=direction or "lower_to_upper"))
         elif task == "rna":
             all_data.extend(generate_dataset_rna_random(size))
+        elif task == "country_code":
+            all_data.extend(generate_dataset_country_random(size))
         else:
             raise ValueError(f"Unknown task: {task}")
     return save_to_jsonl(all_data, output_path)
@@ -238,7 +274,7 @@ def generate_data(tasks, size, output_path):
 ALL_TASK_CHOICES = [
     'lowercase', 'lowercase_words', 'lowercase_text',
     'uppercase', 'uppercase_words', 'uppercase_text',
-    'rna'
+    'rna', 'country_code'
 ]
 
 if __name__ == "__main__":
