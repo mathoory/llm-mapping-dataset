@@ -52,7 +52,7 @@ def save_outputs_and_logs(data_path, results_json, log_lines, model_name):
     print(f"Log written to {log_filename}")
 
 
-def run_eval(model_name, data_path, save_outputs=False, verbose=False, size=None):
+def run_eval(model_name, data_path, save_outputs=False, verbose=False, size=None, tasks=None):
     from utils.llm import LLM
     if verbose:
         LLM.set_log_level("DEBUG")
@@ -63,6 +63,10 @@ def run_eval(model_name, data_path, save_outputs=False, verbose=False, size=None
     try:
         # load jsonl
         examples = load_examples(data_path, size)
+        # Filter by tasks/topics if provided
+        if tasks:
+            task_set = set(tasks)
+            examples = [ex for ex in examples if ex['metadata']['topic'] in task_set]
         prompts = [ex["prompt"] for ex in examples]
 
         # query LLM
@@ -119,9 +123,12 @@ if __name__ == "__main__":
     parser.add_argument('--save_outputs', action='store_true', default=False, help='Save results and log files in runs directory (default: False)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable debug logging')
     parser.add_argument('--size', type=int, default=None, help='Subsample size: number of examples to use from the dataset (evenly spaced)')
+    parser.add_argument('--tasks', type=str, nargs='+', default=None, help='Space separated list of topics to filter for evaluation')
 
     args = parser.parse_args()
 
+    tasks = args.tasks if args.tasks else None
+
     if args.verbose:
         LLM.set_log_level("DEBUG")
-    run_eval(args.model, args.dataset, save_outputs=args.save_outputs, verbose=args.verbose, size=args.size)
+    run_eval(args.model, args.dataset, save_outputs=args.save_outputs, verbose=args.verbose, size=args.size, tasks=tasks)
