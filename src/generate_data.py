@@ -10,7 +10,7 @@ from nltk.corpus import gutenberg, brown, reuters, webtext
 import pycountry
 from wordfreq import top_n_list
 
-from evaluation import CountryMap, Mapping, UppercaseMap, LowercaseMap, RNAMap, DigitMap
+from evaluation import CountryMap, Mapping, UppercaseMap, LowercaseMap, RNAMap, DigitMap, NumberWordMap
 
 with open("./data/prompt.txt", 'r', encoding='utf-8') as f:
     PROMPT_TEMPLATE = f.read()
@@ -270,6 +270,35 @@ def generate_dataset_digits(n, lengths=(10, 100, 1000)):
 
     return dataset
 
+
+def generate_dataset_number_words(n, lengths=(10, 100, 1000)):
+    """Generate dataset of random English number words ('one'-'nine') to their digit strings ('1'-'9')."""
+    t = NumberWordMap()
+    dataset = []
+    difficulties = {length: diff for length, diff in zip(lengths, ["easy", "medium", "hard"])}
+
+    words = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+    for length in lengths:
+        for _ in range(n):
+            number_words = random.choices(words, k=length)
+            digits = t.translate(number_words)
+
+            number_words_str = ' '.join(number_words)
+            digits_str = ' '.join(digits)
+
+            dataset.append({
+                "prompt": gen_prompt(number_words_str, t),
+                "metadata": {
+                    "difficulty": difficulties[length],
+                    "topic": "numbers"
+                },
+                "input": number_words_str,
+                "output": digits_str
+            })
+
+    return dataset
+
+ 
 def save_to_jsonl(data, filename):
     """Save dataset to JSONL file."""
     # Ensure output directory exists
@@ -296,6 +325,8 @@ def generate_data(tasks, size, output_path):
             all_data.extend(generate_dataset_country_random(size))
         elif task == "digits":
             all_data.extend(generate_dataset_digits(size))
+        elif task == "numbers":
+            all_data.extend(generate_dataset_number_words(size))
         else:
             raise ValueError(f"Unknown task: {task}")
     return save_to_jsonl(all_data, output_path)

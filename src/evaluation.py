@@ -1,5 +1,21 @@
+
 from utils.rna_map import codon_table
 from utils.str_compare import StringEvaluator, ListEvaluator
+from typing import List
+
+# Shared two-way digit map
+digit_map = {
+    "1": "one",
+    "2": "two",
+    "3": "three",
+    "4": "four",
+    "5": "five",
+    "6": "six",
+    "7": "seven",
+    "8": "eight",
+    "9": "nine"
+}
+word_to_digit_map = {v: k for k, v in digit_map.items()}
 
 
 class Mapping:
@@ -70,17 +86,6 @@ class CountryMap(Mapping):
 class DigitMap(Mapping):
     def translate(self, input):
         """Convert digits to numbers"""
-        digit_map = {
-            "1": "one",
-            "2": "two",
-            "3": "three",
-            "4": "four",
-            "5": "five",
-            "6": "six",
-            "7": "seven",
-            "8": "eight",
-            "9": "nine"
-        }
         return [digit_map[digit] for digit in input]
 
     def parse_input_output(self, input, output):
@@ -88,8 +93,23 @@ class DigitMap(Mapping):
     def get_evaluator(self):
         return ListEvaluator()
 
+
     def __str__(self):
         return "integer digits (1-9) to their corresponding English words separated by spaces"
+
+
+class NumberWordMap(Mapping):
+    def translate(self, input):
+        """Convert English words ("one"-"nine") to digit strings ("1"-"9")."""
+        return [word_to_digit_map[word] for word in input]
+
+    def parse_input_output(self, input, output):
+        return input.split(" "), output.split(" ")
+    def get_evaluator(self):
+        return ListEvaluator()
+
+    def __str__(self):
+        return "English number words to their corresponding digits (1-9) separated by spaces"
 
 
 topic_to_mapping = {
@@ -108,4 +128,5 @@ topic_to_mapping = {
     "RNA": RNAMap(),
     "country code to country": CountryMap(),
     "digits": DigitMap(),
+    "numbers": NumberWordMap(),
 }
