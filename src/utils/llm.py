@@ -28,7 +28,7 @@ class LLM:
     # Rate and global limits per model
     RATE_LIMITS = {
         "gemini-2.5-flash": {"per_minute": 10, "global": 250},
-        "gemini-2.5-pro": {"per_minute": 2, "global": 50},
+        "gemini-2.5-pro": {"per_minute": 3, "global": 50},
     }
 
     # Instance state for limits
@@ -114,7 +114,7 @@ class LLM:
                     yield ""
             # Rate limit check after each prompt
             if queries_left == 0 and idx < total - 1:
-                self.log(f"Rate limit reached for model {self.model}: sleeping for 60 seconds...", "INFO")
+                self.log(f"Rate limit reached for model {self.model}: sleeping for 60 seconds...", "DEBUG")
                 time.sleep(60)
                 queries_left = per_minute
 

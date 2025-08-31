@@ -86,6 +86,7 @@ def run_eval(model_name, data_path, save_outputs=False, verbose=False, size=None
                 "INPUT": example.get("input", ""),
                 "OUTPUT": extracted_output,
                 "EXP": example.get("output", None),
+                "ACC": 100-res.pct_mistakes,
                 "CONF": confidence_score,
                 "ERRORS": {
                     "SUBSTITUTIONS": res.substitutions,
