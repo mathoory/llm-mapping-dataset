@@ -209,7 +209,7 @@ class StringEvaluator:
             right = s[idx:end] if 0 <= idx <= len(s) else ""
             return f"{left}[∅]{right}"
 
-    def evaluate_strings(self, expected: str, output: str) -> EvaluationResult:
+    def evaluate(self, expected: str, output: str) -> EvaluationResult:
         ops = self._align(expected, output)
 
         mistakes: List[Mistake] = []
@@ -477,4 +477,4 @@ class ListEvaluator:
 # Test
 if __name__ == "__main__":
     evaluator = StringEvaluator()
-    print(evaluator.evaluate_strings("hello world", "Hello orld"))
+    print(evaluator.evaluate("hello world", "Hello orld"))

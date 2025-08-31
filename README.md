@@ -1,5 +1,5 @@
 
-# LLM Mapping Dataset 🚀
+# LLM Mapping Dataset
 
 ## 1. Project Overview
 This project provides a framework for generating and evaluating datasets for natural language processing (NLP) mapping tasks using large language models (LLMs). It supports tasks such as string case conversion and RNA-to-protein translation, and is designed for extensibility and reproducibility.

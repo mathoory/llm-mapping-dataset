@@ -74,6 +74,7 @@ class LLM:
         queries_left = per_minute
         for idx, prompt in enumerate(tqdm(prompts, desc="Querying", unit="prompt")):
             self.log(f"Sending prompt to model", "DEBUG")
+            success = False
             for attempt in range(3):
                 try:
                     response = self.client.models.generate_content(
@@ -96,15 +97,21 @@ class LLM:
                     else:
                         yield text
                     queries_left -= 1
+                    success = True
                     break
                 except ServerError as e:
                     self._handle_server_error(e, attempt)
                     if attempt == 2:
                         queries_left -= 1
-                        # Do not yield, just continue to next prompt
                 except ClientError as e:
                     self._handle_client_error(e, attempt)
                     queries_left = per_minute
+            if not success:
+                # All retries failed, yield default error dict
+                if parse:
+                    yield {"output": "", "confidence": None, "error": "all_retries_failed"}
+                else:
+                    yield ""
             # Rate limit check after each prompt
             if queries_left == 0 and idx < total - 1:
                 self.log(f"Rate limit reached for model {self.model}: sleeping for 60 seconds...", "INFO")
