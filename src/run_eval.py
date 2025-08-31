@@ -32,8 +32,22 @@ def save_outputs_and_logs(data_path, results_json, log_lines):
         timestamp = m.group(1)
     else:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_filename = f"runs/results_{timestamp}.json"
-    log_filename = f"runs/run_log_{timestamp}.txt"
+    # Get model name from results_json if available, else fallback to 'model'
+    if results_json and isinstance(results_json, list) and "MODEL" in results_json[0]:
+        model_name = results_json[0]["MODEL"]
+    else:
+        model_name = "model"
+    # Sanitize model name for filename
+    safe_model = ''.join(c if c.isalnum() or c in ['-', '_'] else '_' for c in model_name)
+    out_base = f"runs/results_{safe_model}_{timestamp}.json"
+    log_base = f"runs/run_log_{safe_model}_{timestamp}.txt"
+    out_filename = out_base
+    log_filename = log_base
+    suffix = 1
+    while os.path.exists(out_filename) or os.path.exists(log_filename):
+        out_filename = f"runs/results_{safe_model}_{timestamp}_{suffix}.json"
+        log_filename = f"runs/run_log_{safe_model}_{timestamp}_{suffix}.txt"
+        suffix += 1
     with open(out_filename, "w", encoding="utf-8") as f:
         json.dump(results_json, f, ensure_ascii=False, indent=2)
     with open(log_filename, "w", encoding="utf-8") as f:

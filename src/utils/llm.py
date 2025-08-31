@@ -28,7 +28,7 @@ class LLM:
     # Rate and global limits per model
     RATE_LIMITS = {
         "gemini-2.5-flash": {"per_minute": 10, "global": 250},
-        "gemini-2.5-pro": {"per_minute": 3, "global": 50},
+        "gemini-2.5-pro": {"per_minute": 3, "global": 100},
     }
 
     # Instance state for limits
