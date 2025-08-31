@@ -10,7 +10,7 @@ from nltk.corpus import gutenberg, brown, reuters, webtext
 import pycountry
 from wordfreq import top_n_list
 
-from evaluation import CountryMap, Mapping, UppercaseMap, LowercaseMap, RNAMap
+from evaluation import CountryMap, Mapping, UppercaseMap, LowercaseMap, RNAMap, DigitMap
 
 with open("./data/prompt.txt", 'r', encoding='utf-8') as f:
     PROMPT_TEMPLATE = f.read()
@@ -243,6 +243,33 @@ def generate_dataset_country_random(n, lengths=(5, 20, 50)):
 
     return dataset
 
+
+def generate_dataset_digits(n, lengths=(10, 100, 1000)):
+    """Generate dataset of random digits to their numeric values."""
+    t = DigitMap()
+    dataset = []
+    difficulties = {length: diff for length, diff in zip(lengths, ["easy", "medium", "hard"])}
+
+    for length in lengths:
+        for _ in range(n):
+            digits = random.choices([str(i) for i in range(1, 10)], k=length)
+            numeric_values = t.translate(digits)
+
+            digits_str = ' '.join(digits)
+            numerics_codes_str = ' '.join(numeric_values)
+
+            dataset.append({
+                "prompt": gen_prompt(digits_str, t),
+                "metadata": {
+                    "difficulty": difficulties[length],
+                    "topic": "digits"
+                },
+                "input": digits_str,
+                "output": numerics_codes_str
+            })
+
+    return dataset
+
 def save_to_jsonl(data, filename):
     """Save dataset to JSONL file."""
     # Ensure output directory exists
@@ -267,6 +294,8 @@ def generate_data(tasks, size, output_path):
             all_data.extend(generate_dataset_rna_random(size))
         elif task == "country_code":
             all_data.extend(generate_dataset_country_random(size))
+        elif task == "digits":
+            all_data.extend(generate_dataset_digits(size))
         else:
             raise ValueError(f"Unknown task: {task}")
     return save_to_jsonl(all_data, output_path)
@@ -274,7 +303,7 @@ def generate_data(tasks, size, output_path):
 ALL_TASK_CHOICES = [
     'lowercase', 'lowercase_words', 'lowercase_text',
     'uppercase', 'uppercase_words', 'uppercase_text',
-    'rna', 'country_code'
+    'rna', 'country_code', 'digits', 'numbers'
 ]
 
 if __name__ == "__main__":

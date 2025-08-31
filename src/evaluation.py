@@ -67,6 +67,31 @@ class CountryMap(Mapping):
         return "country codes to their country names separated by semi-colons (;) (ISO 3166)"
 
 
+class DigitMap(Mapping):
+    def translate(self, input):
+        """Convert digits to numbers"""
+        digit_map = {
+            "1": "one",
+            "2": "two",
+            "3": "three",
+            "4": "four",
+            "5": "five",
+            "6": "six",
+            "7": "seven",
+            "8": "eight",
+            "9": "nine"
+        }
+        return [digit_map[digit] for digit in input]
+
+    def parse_input_output(self, input, output):
+        return input.split(" "), output.split(" ")
+    def get_evaluator(self):
+        return ListEvaluator()
+
+    def __str__(self):
+        return "integer digits (1-9) to their corresponding English words separated by spaces"
+
+
 topic_to_mapping = {
     "uppercase string": UppercaseMap(),
     "lowercase string": LowercaseMap(),
@@ -81,5 +106,6 @@ topic_to_mapping = {
     "lower to upper natural text": UppercaseMap(),
     "upper to lower natural text": LowercaseMap(),
     "RNA": RNAMap(),
-    "country code to country": CountryMap()
+    "country code to country": CountryMap(),
+    "digits": DigitMap(),
 }
