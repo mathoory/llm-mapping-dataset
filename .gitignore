@@ -1,6 +1,7 @@
 src/key.secret
 src/data
 src/runs
+src/reports
 *.pdf
 
 # Byte-compiled / optimized / DLL files
