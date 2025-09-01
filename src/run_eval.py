@@ -25,6 +25,9 @@ def load_examples(data_path, size=None):
 def save_outputs_and_logs(data_path, results_json, log_lines, model_name):
     """Save results and logs to files with timestamped filenames."""
     base = os.path.basename(data_path)
+    # Ensure 'runs' directory exists
+    if not os.path.exists('runs'):
+        os.makedirs('runs')
     # Expecting format: examples_YYYYMMDD_HHMMSS.jsonl
     import re
     m = re.search(r'_(\d{8}_\d{6})', base)
