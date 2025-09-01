@@ -129,4 +129,33 @@ Evaluation results and logs are saved in the `src/runs/` directory:
 - `results_YYYYMMDD_HHMMSS.json`: Contains the evaluation results for each example.
 - `run_log_YYYYMMDD_HHMMSS.txt`: Contains a log of the evaluation process, including errors and confidence scores.
 
+
+## 5. Analyzing Results
+
+To analyze evaluation results and generate error-rate tables, use the analysis script:
+
+```bash
+python src/utils/analyze.py src/runs --out_dir src/reports
+```
+
+This will:
+- Merge all JSON result files in the specified results directory (e.g., `src/runs`).
+- Compute error rates (100 - accuracy) for each model, topic, and difficulty.
+- Print a styled summary table to the terminal (bold = max error per row, underline = min average per topic).
+- Save CSV and Excel files with the results in the output directory (default: `src/reports`).
+
+### Options
+- `--out_dir`: Output directory for reports (default: `src/reports`).
+- `--decimals`: Decimal places for error rates (default: 4).
+- `--zero_tol`: Treat errors ≤ tol as zero (default: 1e-12).
+
+Example with custom options:
+```bash
+python src/utils/analyze.py src/runs --out_dir src/reports --decimals 2 --zero_tol 1e-6
+```
+
+**Output files:**
+- `maptic_table_error_rates.csv`: Machine-friendly error rates table.
+- `maptic_table_error_rates.xlsx`: Excel file with styled error rates table.
+
 For further details, see comments in the source files.

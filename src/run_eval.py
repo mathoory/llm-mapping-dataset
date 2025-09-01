@@ -120,7 +120,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LLM Mapping Dataset Runner")
     parser.add_argument('--model', type=str, default='flash', help='Model name for evaluation')
     parser.add_argument('--dataset', type=str, default='./data/examples.jsonl', help='Path for generated data')
-    parser.add_argument('--save_outputs', action='store_true', default=False, help='Save results and log files in runs directory (default: False)')
+    parser.add_argument('--save_outputs', action='store_true', default=True, help='Save results and log files in runs directory (default: True)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enable debug logging')
     parser.add_argument('--size', type=int, default=None, help='Subsample size: number of examples to use from the dataset (evenly spaced)')
     parser.add_argument('--tasks', type=str, nargs='+', default=None, help='Space separated list of topics to filter for evaluation')

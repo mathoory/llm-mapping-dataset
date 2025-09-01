@@ -342,7 +342,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generate LLM Mapping Dataset")
     parser.add_argument('--tasks', type=str, nargs='+', choices=ALL_TASK_CHOICES, default=ALL_TASK_CHOICES, help='Task types (space separated)')
-    parser.add_argument('--size', type=int, default=40, help='Number of examples to generate per task, will be multiplied by number of difficulties (3) per subtask')
+    parser.add_argument('--size', type=int, default=27, help='Number of examples to generate per task, will be multiplied by number of difficulties (3) per subtask')
     parser.add_argument('--output', type=str, default='./data/examples.jsonl', help='Output path for generated data')
 
     args = parser.parse_args()
