@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Usage: bash make_submission.sh
 
-IDS="207031311_319003711"
+IDS="123456789_123456789"
 ZIP_NAME="nlp_final_project_${IDS}.zip"
 
 # Remove previous archive if exists
