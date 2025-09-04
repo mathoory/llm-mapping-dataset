@@ -12,7 +12,7 @@ from wordfreq import top_n_list
 
 from evaluation import CountryMap, Mapping, UppercaseMap, LowercaseMap, RNAMap, DigitMap, NumberWordMap
 
-with open("./data/prompt.txt", 'r', encoding='utf-8') as f:
+with open("../data/prompt.txt", 'r', encoding='utf-8') as f:
     PROMPT_TEMPLATE = f.read()
 
 def gen_prompt(input, mapping: Mapping):

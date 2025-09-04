@@ -34,6 +34,8 @@ Specify any combination of these tasks using the `--tasks` argument.
 - **requirements.txt**: Minimal required Python packages for running the project.
 - **environment.yaml**: Conda environment specification (optional, for full-featured development).
 - **run_subtask.py**: Unified CLI for generating data and running evaluation.
+- **data/**: Main dataset directory
+
 
 ## 3. Running Instructions 🏃‍♂️
 
